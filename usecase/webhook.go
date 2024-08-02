@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/malfanmh/wabotapi/model"
 	"github.com/tidwall/gjson"
@@ -30,36 +29,57 @@ func (uc *useCase) Webhook(ctx context.Context, hash string, payload []byte) err
 		fmt.Println("client hash does not match")
 		return nil
 	}
-	entryChanges := data.Get("entry.0.changes.0")
-	field := entryChanges.Get("field").String()
+
+	field := data.Get("entry.0.changes.0.field").String()
 	switch field {
 	case "messages":
-		phoneNumber := entryChanges.Get("value.contacts.0.wa_id").String()
-		if entryChanges.Get("value.messages").Exists() {
-			strMessages := entryChanges.Get("value.messages").String()
-			fmt.Println(strMessages)
-			var messages []model.WAMessage
-			if err = json.Unmarshal([]byte(strMessages), &messages); err != nil {
-				fmt.Println("unmarshal messages err:", err)
-				return nil
+		messageValue := data.Get("entry.0.changes.0.value")
+
+		// get contact
+		var contact model.WAContact
+		if messageValue.Get("contacts").Exists() {
+			strContact := messageValue.Get("contacts.0").String()
+			if err = contact.UnmarshalJSON([]byte(strContact)); err != nil {
+				return fmt.Errorf("unmarshal contact err: %v", err)
 			}
-			for _, msg := range messages {
+		}
+
+		if messageValue.Get("messages").Exists() {
+			messages := messageValue.Get("messages").Array()
+			for _, message := range messages {
+				fmt.Println("message.String()", message.String())
+				var msg model.WAMessage
+				if err := msg.UnmarshalJSON([]byte(message.String())); err != nil {
+					return fmt.Errorf("unmarshal message err: %v", err)
+				}
+
 				switch msg.Type {
-				case "text":
-					if err = uc.staticFlow(ctx, msg.Text.Body, phoneNumber); err != nil {
+				case model.WAMessageTypeText:
+					keyword, valid := msg.Text.Match([]string{"halo admin"}...)
+					if !valid {
+						fmt.Println("invalid keyword", msg.Text)
+						return nil
+					}
+
+					if err = uc.staticFlow(ctx, keyword, msg.Text.Body, contact); err != nil {
 						return err
 					}
-				case "button":
-					if err = uc.staticFlow(ctx, msg.Button.Text, phoneNumber); err != nil {
+				case model.WAMessageTypeButton:
+					if err = uc.staticFlow(ctx, msg.Button.Text, "", contact); err != nil {
 						return err
 					}
-				case "link":
+				case model.WAMessageTypeInteractive:
+					if err = uc.staticFlow(ctx, msg.Interactive.ListReplay.ID, "", contact); err != nil {
+						return err
+					}
 				default:
 					fmt.Println("unknown type:", msg.Type)
 				}
 			}
+		} else {
+			fmt.Println("message not found")
 		}
-		// TODO handle message status
+		// TODO handle message statuses
 	default:
 		fmt.Println("unknown field:", field)
 		return nil
@@ -67,45 +87,59 @@ func (uc *useCase) Webhook(ctx context.Context, hash string, payload []byte) err
 	return nil
 }
 
-func (uc *useCase) staticFlow(ctx context.Context, keyword, to string) error {
+const (
+	salam           = `{ "body":"Assalamualaikum %s Selamat datang di Layanan WA Muhammadiyah. \n\nSebelum melanjutkan, harap masukan terlebih dahulu No KTA dan Nama Anggota Anda dengan format: \n\nNo. KTA#Nama Anggota\n123456789#Ahmad Sayuri"}`
+	salamRegistered = `{"type":"list","body":{"text":"Assalamualaikum %s, Selamat datang di Layanan WA Muhammadiyah. \n\nSilahkan pilih layanan di bawah ini sesuai kebutuhan Anda."},"action":{"button":"Pilih Layanan","sections":[{"rows":[{"id":"aktivasi_anggota","title":"Aktivasi Anggota"},{"id":"pembayaran_iuran_anggota","title":"Pembayaran Iuran Anggota"},{"id":"pembayaran_zis","title":"Pembayaran ZIS","description":"(Zakat, Infaq, Sedekah)"},{"id":"etalase_produk","title":"Etalase Produk"},{"id":"informasi_umum","title":"Informasi Umum"}]}]},"footer":{"text":"%s"}}`
+	informasiUmum   = `{"type":"list","body":{"text":"Informasi apa yang ingin Anda ketahui mengenai Koperasi Muhammadiyah?\n"},"action":{"button":"Jenis Informasi","sections":[{"rows":[{"id":"info_profil_koperasi","title":"Profil Koperasi","description":"Informasi Profil Koperasi Muhammadia"},{"id":"info_aktivasi_anggota","title":"Aktivasi Anggota"},{"id":"info_keanggotaan","title":"Informasi Keanggotaan"},{"id":"info_layanan_produk","title":"Informasi Layanan Produk"},{"id":"etalase_produk","title":"Etalase Produk"}]}]},"footer":{"text":"%s"}}`
+	informasiProfil = `{"body":"Anda akan diarahkan menuju website koperasi Muhammadiyah \n\nhttps://muhammadiyah.or.id","preview_url":true}`
+)
+
+func (uc *useCase) staticFlow(ctx context.Context, keyword, payload string, contact model.WAContact) error {
 	senderNumberID := "385924484596973"
 	keyword = strings.ToLower(keyword)
+
+	member, exists := uc.members.Get(contact.WaID)
+	var msgType, jsonBody string
 	switch keyword {
-	case "hi":
-		result, err := uc.wa.SendTemplate(ctx,
-			senderNumberID,
-			to,
-			model.WATemplate{
-				Name:     "hello_world",
-				Language: "en_US",
-			}, nil)
-		if err != nil {
-			fmt.Println(err)
+	case "halo admin":
+		if !exists {
+			name := func() string {
+				if contact.Profile.Name.IsCleanLetter() {
+					return contact.Profile.Name.String()
+				}
+				return ""
+			}()
+			msgType = model.WAMessageTypeText.String()
+			jsonBody = fmt.Sprintf(salam, name)
+		} else {
+			msgType = model.WAMessageTypeInteractive.String()
+			jsonBody = fmt.Sprintf(salamRegistered, member.Name, member.ID)
 		}
-		fmt.Println("send ", result)
-		result, err = uc.wa.SendTemplate(ctx,
-			senderNumberID,
-			to,
-			model.WATemplate{
-				Name:     "qna_template_test_1",
-				Language: "en",
-			}, nil)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println("send ", result)
-	case "produk a":
-		result, err := uc.wa.SendText(ctx, senderNumberID, to, "terimakasih sudah memilih produk A", nil)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println("send ", result)
-	case "produk b":
-		result, err := uc.wa.SendText(ctx, senderNumberID, to, "terimakasih sudah memilih produk B", nil)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println("send ", result)
+	case model.KeywordInputKTA:
+		_, _ = uc.wa.Send(ctx, senderNumberID, contact.WaID, model.WAMessageTypeText.String(),
+			`{"body":"Mohon tunggu...."}`)
+		data := strings.Split(payload, "#")
+		uc.members.Set(contact.WaID, model.Member{
+			ID:      data[0],
+			Name:    data[1],
+			Contact: contact,
+		})
+		_, _ = uc.wa.Send(ctx, senderNumberID, contact.WaID, model.WAMessageTypeText.String(),
+			`{"body":"Aktivasi Anggota Berhasil...."}`)
+
+		msgType = model.WAMessageTypeInteractive.String()
+		jsonBody = fmt.Sprintf(salamRegistered, data[1], data[0])
+	case "informasi_umum":
+		msgType = model.WAMessageTypeInteractive.String()
+		jsonBody = fmt.Sprintf(informasiUmum, member.ID)
+	case "info_profil_koperasi":
+		msgType = model.WAMessageTypeText.String()
+		jsonBody = fmt.Sprintf(informasiProfil)
+	default:
+		fmt.Println("unknown keyword:", keyword)
+		return nil
 	}
-	return nil
+	result, err := uc.wa.Send(ctx, senderNumberID, contact.WaID, msgType, jsonBody)
+	fmt.Println("send response: ", result, err)
+	return err
 }

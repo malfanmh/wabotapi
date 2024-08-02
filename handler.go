@@ -53,10 +53,12 @@ func (h *handler) Webhook(c echo.Context) error {
 
 	payload, err := io.ReadAll(c.Request().Body)
 	if err != nil {
+		fmt.Println("error reading body")
 		return c.String(http.StatusBadRequest, err.Error())
 	}
 	fmt.Println("payload", string(payload))
-	if err := h.uc.Webhook(c.Request().Context(), c.Param("clientHash"), payload); err != nil {
+	if err = h.uc.Webhook(c.Request().Context(), c.Param("clientHash"), payload); err != nil {
+		fmt.Println("webhook error", err)
 		return c.String(http.StatusBadRequest, err.Error())
 	}
 
