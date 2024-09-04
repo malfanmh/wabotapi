@@ -2,8 +2,13 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
 	"github.com/malfanmh/wabotapi/model"
+	"time"
 )
 
 type mysqlRepository struct {
@@ -15,7 +20,181 @@ func NewMysql(db *sqlx.DB) *mysqlRepository {
 }
 
 func (r *mysqlRepository) GetClientByHash(ctx context.Context, hash string) (result model.Client, err error) {
-	q := `SELECT id, name, hash, token FROM clients WHERE hash = ?`
+	q := `SELECT id, name, hash, token, wa_phone, wa_phone_id FROM clients WHERE hash = ?`
 	err = r.db.GetContext(ctx, &result, r.db.Rebind(q), hash)
+	return
+}
+
+func (r *mysqlRepository) GetClientByWAPhoneID(ctx context.Context, waPhoneID string) (result model.Client, err error) {
+	q := `SELECT id, name, hash, token, wa_phone, wa_phone_id FROM clients WHERE wa_phone_id = ?`
+	err = r.db.GetContext(ctx, &result, r.db.Rebind(q), waPhoneID)
+	return
+}
+
+func (r *mysqlRepository) GetMessageFlow(ctx context.Context, clientID int64, access model.Access, keyword string, seq string, limit int) (result []model.MessageFlow, err error) {
+	var args = []interface{}{keyword, clientID, access}
+	q := `select keyword,mf.message_id, mf.access,m.type,mf.validate_input,mf.seq, m.slug
+			from message_flows mf
+				 inner join messages m on mf.message_id = m.id
+		where mf.display = 1
+		  and keyword = ? 
+		  and mf.client_id = ?
+		  and mf.access <= ?		   
+		`
+	if seq != "" {
+		q += " and mf.seq >= ? "
+		args = append(args, seq)
+	}
+	q += `order by mf.seq`
+	if limit > 0 {
+		q += fmt.Sprintf(" limit %d", limit)
+	}
+	fmt.Println(q)
+	fmt.Println(args)
+	err = r.db.SelectContext(ctx, &result, r.db.Rebind(q), args...)
+	return
+}
+
+func (r *mysqlRepository) GetMessageFlowBySlug(ctx context.Context, clientID int64, slug string) (flow model.MessageFlow, err error) {
+	q := `select keyword,mf.message_id, mf.access,m.type,mf.validate_input,mf.seq, m.slug
+			from messages m inner join message_flows mf on m.id = mf.message_id
+			where m.slug = ?
+			  and m.client_id = ?`
+	err = r.db.GetContext(ctx, &flow, r.db.Rebind(q), slug, clientID)
+	return
+}
+
+func (r *mysqlRepository) GetNextFlow(ctx context.Context, clientID int64, access model.Access, keyword string, seq string) (result model.MessageFlow, err error) {
+	var args = []interface{}{keyword, clientID, access, seq}
+	q := `select keyword,mf.message_id, mf.access,m.type,mf.validate_input,mf.seq, m.slug
+			from message_flows mf
+				 inner join messages m on mf.message_id = m.id
+		where mf.display = 1
+		  and keyword = ? 
+		  and mf.client_id = ?
+		  and mf.access <= ?	
+		  and seq > ?
+		  order by mf.seq
+		  limit 1
+		  `
+	err = r.db.GetContext(ctx, &result, r.db.Rebind(q), args...)
+	return
+}
+
+func (r *mysqlRepository) GetMessage(ctx context.Context, clientID, messageID int64) (msg model.Message, err error) {
+	q := `select slug, type, button, header_text, preview_url, body_text, footer_text, with_metadata
+			from messages
+			where client_id = ?
+			and id = ?`
+	err = r.db.GetContext(ctx, &msg, r.db.Rebind(q), clientID, messageID)
+	return
+}
+
+func (r *mysqlRepository) GetMessageAction(ctx context.Context, messageID int64, access model.Access) (result []model.MessageAction, err error) {
+	q := `select slug,title,description
+			from message_actions
+			where message_id = ?
+			 and access <= ?
+			 and display = 1
+			order by seq;`
+	err = r.db.SelectContext(ctx, &result, r.db.Rebind(q), messageID, access)
+	return
+}
+
+func (r *mysqlRepository) GetCustomerByWAID(ctx context.Context, clientID int64, waid string) (result model.Customer, err error) {
+	q := `SELECT id, client_id, wa_id, email, full_name, address, birth_date, identity_number, identity_type, gender, status, created_at, updated_at FROM customers WHERE client_id = ? and wa_id = ?`
+	err = r.db.GetContext(ctx, &result, r.db.Rebind(q), clientID, waid)
+	return
+}
+
+func (r *mysqlRepository) GetSession(ctx context.Context, clientID int64, waid, input string) (result model.Session, err error) {
+	q := `SELECT id, client_id, wa_id, access, seq, slug, input, created_at, expired_at FROM session WHERE client_id = ? and wa_id = ?`
+	err = r.db.GetContext(ctx, &result, r.db.Rebind(q), clientID, waid)
+	if errors.Is(err, sql.ErrNoRows) {
+		now := time.Now()
+		expired := now.Add(24 * time.Hour)
+		q := `INSERT INTO session(client_id, wa_id, access, seq, input, expired_at) VALUES (?,?,?,?,?,?)`
+		res, errI := r.db.ExecContext(ctx, r.db.Rebind(q), clientID, waid, 0, "", input, expired.Format(time.RFC3339))
+		if errI != nil {
+			err = errI
+			return
+		}
+		id, _ := res.LastInsertId()
+		result = model.Session{
+			ID:        id,
+			ClientID:  clientID,
+			WAID:      waid,
+			Access:    0,
+			Seq:       "",
+			Input:     input,
+			CreatedAt: now.Format(time.RFC3339),
+			ExpiredAt: expired.Format(time.RFC3339),
+		}
+
+	}
+	if err != nil {
+		return result, err
+	}
+	return
+}
+
+func (r *mysqlRepository) UpdateSession(ctx context.Context, session model.Session) (err error) {
+	expired := time.Now().Add(24 * time.Hour)
+	q := `UPDATE session SET seq = ? ,slug = ?, input = ?,access = ?, expired_at = ? WHERE client_id = ? and wa_id = ?`
+	_, err = r.db.ExecContext(ctx, r.db.Rebind(q), session.Seq, session.Slug, session.Input, session.Access, expired.Format(time.RFC3339), session.ClientID, session.WAID)
+	return
+}
+
+func (r *mysqlRepository) InsertCustomer(ctx context.Context, customer model.Customer) (err error) {
+	q := `INSERT INTO customers (client_id,wa_id, status) VALUES (?,?,?)`
+	_, err = r.db.ExecContext(ctx, r.db.Rebind(q), customer.ClientID, customer.WAID, model.AccessPublic)
+	return
+}
+
+func (r *mysqlRepository) UpdateCustomer(ctx context.Context, customer model.Customer) (err error) {
+	builder := sq.Update("customers")
+	if customer.Email.Valid {
+		builder = builder.Set("email", customer.Email.V)
+	}
+
+	if customer.FullName.Valid {
+		builder = builder.Set("full_name", customer.FullName.V)
+	}
+
+	if customer.BirthDate.Valid {
+		birtDate := customer.BirthDate.V
+		if len(birtDate) > 10 {
+			if t, errP := time.Parse(time.RFC3339, birtDate); errP == nil {
+				birtDate = t.Format(time.DateOnly)
+			}
+		}
+		builder = builder.Set("birth_date", birtDate)
+	}
+	if customer.IdentityNumber.Valid {
+		builder = builder.Set("identity_number", customer.IdentityNumber.V)
+		builder = builder.Set("identity_type", "ktp")
+	}
+	if customer.Address.Valid {
+		builder = builder.Set("address", customer.Address.V)
+	}
+	if customer.Gender.Valid {
+		builder = builder.Set("gender", customer.Gender.V)
+	}
+	if customer.Status.Valid {
+		builder = builder.Set("status", customer.Status.V.Int())
+	}
+	builder = builder.Where(sq.Eq{
+		"client_id": customer.ClientID,
+		"wa_id":     customer.WAID,
+	})
+
+	q, args, err := builder.ToSql()
+	fmt.Println("update customer", q, args, err)
+
+	if err != nil {
+		return
+	}
+
+	_, err = r.db.ExecContext(ctx, q, args...)
 	return
 }

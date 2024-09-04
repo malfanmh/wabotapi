@@ -104,31 +104,29 @@ func (wa *whatsappAPI) SendText(ctx context.Context, from, to string, text strin
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("http status code %d", resp.StatusCode)
+		return "", fmt.Errorf("http status code %d", resp.StatusCode, string(b))
 	}
 	return string(b), nil
 }
 
-func (wa *whatsappAPI) Send(ctx context.Context, from, to string, msgType, jsonBody string) (string, error) {
+func (wa *whatsappAPI) Send(ctx context.Context, from, to string, msgType model.WAMessageType, jsonBody string) (string, error) {
 	url := fmt.Sprintf("%s/%s/messages", wa.baseURL, from)
-
+	fmt.Println(url)
 	data := fmt.Sprintf(`{
 		"messaging_product": "whatsapp",
 		"recipient_type": "individual",
 		"to": "%s",
 		"type": "%s",
 		"%s": %s
-	}`, to, msgType, msgType, jsonBody)
-
+	}`, to, msgType.String(), msgType.String(), jsonBody)
 	fmt.Println(data)
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(data))
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("Authorization", "Bearer "+wa.token)
 	req.Header.Set("Content-Type", "application/json")
-
+	fmt.Println("wa.token", "Bearer "+wa.token)
 	resp, err := wa.c.Do(req)
 	if err != nil {
 		return "", err
@@ -138,7 +136,6 @@ func (wa *whatsappAPI) Send(ctx context.Context, from, to string, msgType, jsonB
 			fmt.Println(err)
 		}
 	}(resp.Body)
-
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err

@@ -3,6 +3,7 @@ module github.com/malfanmh/wabotapi
 go 1.22.5
 
 require (
+	github.com/Masterminds/squirrel v1.5.4
 	github.com/RekeningkuDev/portfolio-analyst/api v0.0.0-20240729170016-acb62648cf56
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/go-resty/resty/v2 v2.13.1
@@ -13,7 +14,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/mailru/easyjson v0.7.7
-	github.com/orcaman/concurrent-map/v2 v2.0.1
+	github.com/pkg/errors v0.9.1
 	github.com/tidwall/gjson v1.17.1
 	google.golang.org/grpc v1.65.0
 )
@@ -31,6 +32,8 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
+	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
+	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

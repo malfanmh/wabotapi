@@ -622,6 +622,8 @@ func easyjson25b52c02DecodeGithubComMalfanmhWabotapiModel6(in *jlexer.Lexer, out
 			out.Type = string(in.String())
 		case "list_reply":
 			(out.ListReplay).UnmarshalEasyJSON(in)
+		case "button_reply":
+			(out.ButtonReplay).UnmarshalEasyJSON(in)
 		default:
 			in.SkipRecursive()
 		}
@@ -645,6 +647,11 @@ func easyjson25b52c02EncodeGithubComMalfanmhWabotapiModel6(out *jwriter.Writer, 
 		const prefix string = ",\"list_reply\":"
 		out.RawString(prefix)
 		(in.ListReplay).MarshalEasyJSON(out)
+	}
+	{
+		const prefix string = ",\"button_reply\":"
+		out.RawString(prefix)
+		(in.ButtonReplay).MarshalEasyJSON(out)
 	}
 	out.RawByte('}')
 }
@@ -810,84 +817,4 @@ func (v *WAContact) UnmarshalJSON(data []byte) error {
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *WAContact) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjson25b52c02DecodeGithubComMalfanmhWabotapiModel8(l, v)
-}
-func easyjson25b52c02DecodeGithubComMalfanmhWabotapiModel9(in *jlexer.Lexer, out *Member) {
-	isTopLevel := in.IsStart()
-	if in.IsNull() {
-		if isTopLevel {
-			in.Consumed()
-		}
-		in.Skip()
-		return
-	}
-	in.Delim('{')
-	for !in.IsDelim('}') {
-		key := in.UnsafeFieldName(false)
-		in.WantColon()
-		if in.IsNull() {
-			in.Skip()
-			in.WantComma()
-			continue
-		}
-		switch key {
-		case "id":
-			out.ID = string(in.String())
-		case "name":
-			out.Name = string(in.String())
-		case "contact":
-			(out.Contact).UnmarshalEasyJSON(in)
-		default:
-			in.SkipRecursive()
-		}
-		in.WantComma()
-	}
-	in.Delim('}')
-	if isTopLevel {
-		in.Consumed()
-	}
-}
-func easyjson25b52c02EncodeGithubComMalfanmhWabotapiModel9(out *jwriter.Writer, in Member) {
-	out.RawByte('{')
-	first := true
-	_ = first
-	{
-		const prefix string = ",\"id\":"
-		out.RawString(prefix[1:])
-		out.String(string(in.ID))
-	}
-	{
-		const prefix string = ",\"name\":"
-		out.RawString(prefix)
-		out.String(string(in.Name))
-	}
-	{
-		const prefix string = ",\"contact\":"
-		out.RawString(prefix)
-		(in.Contact).MarshalEasyJSON(out)
-	}
-	out.RawByte('}')
-}
-
-// MarshalJSON supports json.Marshaler interface
-func (v Member) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson25b52c02EncodeGithubComMalfanmhWabotapiModel9(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
-// MarshalEasyJSON supports easyjson.Marshaler interface
-func (v Member) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson25b52c02EncodeGithubComMalfanmhWabotapiModel9(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *Member) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson25b52c02DecodeGithubComMalfanmhWabotapiModel9(&r, v)
-	return r.Error()
-}
-
-// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
-func (v *Member) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson25b52c02DecodeGithubComMalfanmhWabotapiModel9(l, v)
 }

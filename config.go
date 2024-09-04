@@ -23,7 +23,9 @@ type Config struct {
 
 func init() {
 	fmt.Println("Initializing , load environment variables", godotenv.Load())
-	fmt.Println(os.Getenv("STATIC_SECRET"))
+
+	fmt.Println("STATIC_SECRET", os.Getenv("STATIC_SECRET"))
+	fmt.Println("WA_ACCESS_TOKEN", os.Getenv("WA_ACCESS_TOKEN"))
 }
 
 func New() (conf *Config) {

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"strings"
 	"unicode"
 )
@@ -15,7 +16,7 @@ const (
 
 type WAContactProfileName string
 
-func isLetter(s string) bool {
+func IsLetter(s string) bool {
 	for _, r := range s {
 		if !unicode.IsLetter(r) {
 			return false
@@ -24,8 +25,14 @@ func isLetter(s string) bool {
 	return true
 }
 
-func (pn WAContactProfileName) IsCleanLetter() bool {
-	return isLetter(pn.String())
+func ParseWAMessageType(s string) (WAMessageType, error) {
+	switch s {
+	case "text":
+		return WAMessageTypeText, nil
+	case "list", "button":
+		return WAMessageTypeInteractive, nil
+	}
+	return "", fmt.Errorf("invalid WA message type: %s", s)
 }
 
 func (pn WAContactProfileName) String() string {
@@ -54,8 +61,9 @@ type (
 		Description string `json:"description"`
 	}
 	WAInteractive struct {
-		Type       string                  `json:"type"`
-		ListReplay WAInteractiveListReplay `json:"list_reply"`
+		Type         string                  `json:"type"`
+		ListReplay   WAInteractiveListReplay `json:"list_reply"`
+		ButtonReplay WAInteractiveListReplay `json:"button_reply"`
 	}
 	WAMessageContext struct {
 		From string `json:"from"`
@@ -92,26 +100,18 @@ func (t WAMessageText) IsInputKTA() bool {
 	return false
 }
 
-const KeywordInputKTA = "input_kta"
+const (
+	InputText    = "input_text"
+	InputTextKTA = "input_text_kta"
+)
 
-func (t WAMessageText) Match(keywords ...string) (keyword string, valid bool) {
+func (t WAMessageText) Parse() (keyword, origin string, valid bool) {
 	if t.IsInputKTA() {
-		return KeywordInputKTA, true
+		return InputTextKTA, t.Body, true
 	}
-	for _, v := range keywords {
-		if strings.ToLower(v) == t.Body {
-			return t.Body, true
-		}
-	}
-	return "", false
+	return t.Body, t.Body, t.Body != ""
 }
 
 func (wt WAMessageType) String() string {
 	return string(wt)
-}
-
-type Member struct {
-	ID      string    `json:"id"`
-	Name    string    `json:"name"`
-	Contact WAContact `json:"contact"`
 }
