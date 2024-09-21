@@ -74,6 +74,29 @@ func (uc *useCase) generateMessageBody(ctx context.Context, clientID, messageID 
 		if message.BodyText != "" {
 			jsonMessage += fmt.Sprintf(`"body":"%s"`, message.BodyText)
 		}
+	case model.MessageFlowCTAURL:
+		jsonMessage += `"type":"cta_url",`
+		if message.HeaderText != "" {
+			jsonMessage += fmt.Sprintf(`"header":{"type":"text", "text","%s"},`, message.HeaderText)
+		}
+
+		if message.BodyText != "" {
+			jsonMessage += fmt.Sprintf(`"body":{"text":"%s"},`, message.BodyText)
+		}
+		if message.FooterText != "" {
+			jsonMessage += fmt.Sprintf(`"footer":{"text":"%s"}`, message.FooterText)
+		}
+
+		actions, errA := uc.repo.GetMessageAction(ctx, messageID, access)
+		if errA != nil {
+			err = errA
+			return
+		}
+		var actionJson string
+		for _, action := range actions {
+			actionJson = fmt.Sprintf(`{"display_text":"%s","url":"%s"}`, action.Title, action.Desc)
+		}
+		jsonMessage += fmt.Sprintf(`"action":{"name":"cta_url","parameters": %s }`, actionJson)
 	default:
 		err = fmt.Errorf("unknown type: %s", message.Type)
 	}

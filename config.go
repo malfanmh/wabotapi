@@ -7,7 +7,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
-	"os"
 	"sync"
 )
 
@@ -19,13 +18,15 @@ type Config struct {
 	WAAccessToken       string `envconfig:"WA_ACCESS_TOKEN" default:"token"`
 	WABusinessAccountID string `envconfig:"WA_BUSINESS_ACCOUNT_ID"`
 	WABaseURL           string `envconfig:"WA_BASE_URL"`
+	WASecret            string `envconfig:"WA_SECRET"`
+	FinpayMerchantID    string `envconfig:"FINPAY_MERCHANT_ID" default:""`
+	FinpaySecret        string `envconfig:"FINPAY_SECRET" default:""`
+	FinpayBaseURL       string `envconfig:"FINPAY_BASE_URL" default:""`
+	FinpayCallbackURL   string `envconfig:"FINPAY_CALLBACK_URL" default:""`
 }
 
 func init() {
 	fmt.Println("Initializing , load environment variables", godotenv.Load())
-
-	fmt.Println("STATIC_SECRET", os.Getenv("STATIC_SECRET"))
-	fmt.Println("WA_ACCESS_TOKEN", os.Getenv("WA_ACCESS_TOKEN"))
 }
 
 func New() (conf *Config) {

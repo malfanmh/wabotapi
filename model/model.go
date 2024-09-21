@@ -1,11 +1,14 @@
 package model
 
-import "database/sql"
+import (
+	"database/sql"
+	"github.com/shopspring/decimal"
+)
 
 type Access int
 
 const (
-	AccessPublic Access = iota
+	AccessNew Access = iota
 	AccessRegistered
 	AccessActivated
 )
@@ -34,11 +37,13 @@ const (
 	MessageFlowText   MessageFlowType = "text"
 	MessageFlowList   MessageFlowType = "list"
 	MessageFlowButton MessageFlowType = "button"
+	MessageFlowCTAURL MessageFlowType = "cta_url"
 )
 
 var mapType = map[MessageFlowType]WAMessageType{
 	MessageFlowButton: WAMessageTypeInteractive,
 	MessageFlowList:   WAMessageTypeInteractive,
+	MessageFlowCTAURL: WAMessageTypeInteractive,
 	MessageFlowText:   WAMessageTypeText,
 }
 
@@ -54,6 +59,7 @@ type MessageFlow struct {
 	Type          MessageFlowType `db:"type"`
 	Slug          string          `db:"slug"`
 	ValidateInput bool            `db:"validate_input"`
+	Checkout      bool            `db:"checkout"`
 	IsInput       bool
 	IsReValidate  bool
 }
@@ -96,9 +102,33 @@ type Customer struct {
 	IdentityNumber sql.Null[string] `db:"identity_number"`
 	IdentityType   sql.Null[string] `db:"identity_type"`
 	Gender         sql.Null[string] `db:"gender"`
-	Status         sql.Null[Access] `db:"status"`
+	Access         sql.Null[Access] `db:"access"`
 	CreatedAt      string           `db:"created_at"`
 	UpdatedAt      string           `db:"updated_at"`
+}
+
+type Payment struct {
+	ID              int64               `db:"id"`
+	CreatedAt       string              `db:"created_at"`
+	UpdatedAt       string              `db:"updated_at"`
+	ExpiredAt       sql.Null[string]    `db:"expired_at"`
+	RefID           sql.Null[string]    `db:"ref_id"`
+	CustomerID      int64               `db:"customer_id"`
+	PaymentType     sql.Null[string]    `db:"payment_type"`
+	PaymentProvider sql.Null[string]    `db:"payment_provider"`
+	PaymentCode     sql.Null[string]    `db:"payment_code"`
+	PaymentRefID    sql.Null[string]    `db:"payment_ref_id"`
+	PaymentItem     sql.Null[string]    `db:"payment_item"`
+	Status          sql.Null[string]    `db:"status"`
+	Amount          decimal.NullDecimal `db:"amount"`
+	Fee             decimal.NullDecimal `db:"fee"`
+}
+
+type PaymentCustomer struct {
+	ID         int64  `db:"id"`
+	ClientID   int64  `db:"client_id"`
+	WAID       string `db:"wa_id"`
+	CustomerID int64  `db:"customer_id"`
 }
 
 type Session struct {
@@ -114,5 +144,79 @@ type Session struct {
 }
 
 type MessageMetadata struct {
-	Name string `json:"name"`
+	Name        string `json:"name"`
+	CheckoutURL string `json:"checkout_url"`
+	Amount      string `json:"amount"`
+	ExpiryDate  string `json:"expiry_date"`
+}
+
+type (
+	PaymentLinkCustomer struct {
+		Email       string `json:"email"`
+		FirstName   string `json:"firstName"`
+		LastName    string `json:"lastName"`
+		MobilePhone string `json:"mobilePhone"`
+	}
+	PaymentLinkOrder struct {
+		ID          string `json:"id"`
+		Amount      string `json:"amount"`
+		Description string `json:"description"`
+	}
+	PaymentLinkCallbackURL struct {
+		CallbackURL string `json:"callbackUrl"`
+	}
+	PaymentLink struct {
+		Customer PaymentLinkCustomer    `json:"customer"`
+		Order    PaymentLinkOrder       `json:"order"`
+		URL      PaymentLinkCallbackURL `json:"url"`
+	}
+	PaymentLinkResponse struct {
+		ResponseCode    string  `json:"responseCode"`
+		ResponseMessage string  `json:"responseMessage"`
+		ExpiryLink      string  `json:"expiryLink"`
+		PaymentCode     string  `json:"paymentCode"`
+		Appurl          string  `json:"appurl"`
+		Imageurl        string  `json:"imageurl"`
+		StringQr        string  `json:"stringQr"`
+		Redirecturl     string  `json:"redirecturl"`
+		ProcessingTime  float64 `json:"processingTime"`
+		TraceID         string  `json:"traceId"`
+	}
+)
+
+type FinpayCallback struct {
+	Merchant struct {
+		ID string `json:"id"`
+	} `json:"merchant"`
+	Customer struct {
+		ID string `json:"id"`
+	} `json:"customer"`
+	Order struct {
+		ID        string `json:"id"`
+		Reference string `json:"reference"`
+		Amount    int    `json:"amount"`
+		Currency  string `json:"currency"`
+	} `json:"order"`
+	Transaction struct {
+		AcquirerID any `json:"acquirerId"`
+	} `json:"transaction"`
+	SourceOfFunds struct {
+		Type        string `json:"type"`
+		PaymentCode string `json:"paymentCode"`
+	} `json:"sourceOfFunds"`
+	Meta struct {
+		Data any `json:"data"`
+	} `json:"meta"`
+	Result struct {
+		Payment struct {
+			Status     string  `json:"status"`
+			StatusDesc string  `json:"statusDesc"`
+			UserDesc   string  `json:"userDesc"`
+			Datetime   string  `json:"datetime"`
+			Reference  string  `json:"reference"`
+			Channel    string  `json:"channel"`
+			Amount     float64 `json:"amount"`
+		} `json:"payment"`
+	} `json:"result"`
+	Signature string `json:"signature"`
 }

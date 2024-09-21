@@ -25,6 +25,15 @@ func IsLetter(s string) bool {
 	return true
 }
 
+func IsAlphanumeric(s string) bool {
+	for _, r := range s {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
+}
+
 func ParseWAMessageType(s string) (WAMessageType, error) {
 	switch s {
 	case "text":

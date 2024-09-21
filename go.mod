@@ -6,8 +6,8 @@ require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/RekeningkuDev/portfolio-analyst/api v0.0.0-20240729170016-acb62648cf56
 	github.com/go-playground/validator v9.31.0+incompatible
-	github.com/go-resty/resty/v2 v2.13.1
 	github.com/go-sql-driver/mysql v1.6.0
+	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.21.0
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/joho/godotenv v1.5.1
@@ -16,6 +16,7 @@ require (
 	github.com/mailru/easyjson v0.7.7
 	github.com/pkg/errors v0.9.1
 	github.com/tidwall/gjson v1.17.1
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0
 	google.golang.org/grpc v1.65.0
 )
 
@@ -25,6 +26,7 @@ require (
 	github.com/RekeningkuDev/nill v1.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect

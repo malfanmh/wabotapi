@@ -19,12 +19,6 @@ func NewMysql(db *sqlx.DB) *mysqlRepository {
 	return &mysqlRepository{db}
 }
 
-func (r *mysqlRepository) GetClientByHash(ctx context.Context, hash string) (result model.Client, err error) {
-	q := `SELECT id, name, hash, token, wa_phone, wa_phone_id FROM clients WHERE hash = ?`
-	err = r.db.GetContext(ctx, &result, r.db.Rebind(q), hash)
-	return
-}
-
 func (r *mysqlRepository) GetClientByWAPhoneID(ctx context.Context, waPhoneID string) (result model.Client, err error) {
 	q := `SELECT id, name, hash, token, wa_phone, wa_phone_id FROM clients WHERE wa_phone_id = ?`
 	err = r.db.GetContext(ctx, &result, r.db.Rebind(q), waPhoneID)
@@ -33,13 +27,13 @@ func (r *mysqlRepository) GetClientByWAPhoneID(ctx context.Context, waPhoneID st
 
 func (r *mysqlRepository) GetMessageFlow(ctx context.Context, clientID int64, access model.Access, keyword string, seq string, limit int) (result []model.MessageFlow, err error) {
 	var args = []interface{}{keyword, clientID, access}
-	q := `select keyword,mf.message_id, mf.access,m.type,mf.validate_input,mf.seq, m.slug
+	q := `select keyword,mf.message_id, mf.access,m.type,mf.validate_input,mf.seq, m.slug, mf.checkout
 			from message_flows mf
 				 inner join messages m on mf.message_id = m.id
 		where mf.display = 1
 		  and keyword = ? 
 		  and mf.client_id = ?
-		  and mf.access <= ?		   
+		  and mf.access = ?		   
 		`
 	if seq != "" {
 		q += " and mf.seq >= ? "
@@ -56,7 +50,7 @@ func (r *mysqlRepository) GetMessageFlow(ctx context.Context, clientID int64, ac
 }
 
 func (r *mysqlRepository) GetMessageFlowBySlug(ctx context.Context, clientID int64, slug string) (flow model.MessageFlow, err error) {
-	q := `select keyword,mf.message_id, mf.access,m.type,mf.validate_input,mf.seq, m.slug
+	q := `select keyword,mf.message_id, mf.access,m.type,mf.validate_input,mf.seq, m.slug,mf.checkout
 			from messages m inner join message_flows mf on m.id = mf.message_id
 			where m.slug = ?
 			  and m.client_id = ?`
@@ -66,13 +60,13 @@ func (r *mysqlRepository) GetMessageFlowBySlug(ctx context.Context, clientID int
 
 func (r *mysqlRepository) GetNextFlow(ctx context.Context, clientID int64, access model.Access, keyword string, seq string) (result model.MessageFlow, err error) {
 	var args = []interface{}{keyword, clientID, access, seq}
-	q := `select keyword,mf.message_id, mf.access,m.type,mf.validate_input,mf.seq, m.slug
+	q := `select keyword,mf.message_id, mf.access,m.type,mf.validate_input,mf.seq, m.slug,mf.checkout
 			from message_flows mf
 				 inner join messages m on mf.message_id = m.id
 		where mf.display = 1
 		  and keyword = ? 
 		  and mf.client_id = ?
-		  and mf.access <= ?	
+		  and mf.access = ?	
 		  and seq > ?
 		  order by mf.seq
 		  limit 1
@@ -94,7 +88,7 @@ func (r *mysqlRepository) GetMessageAction(ctx context.Context, messageID int64,
 	q := `select slug,title,description
 			from message_actions
 			where message_id = ?
-			 and access <= ?
+			 and access = ?
 			 and display = 1
 			order by seq;`
 	err = r.db.SelectContext(ctx, &result, r.db.Rebind(q), messageID, access)
@@ -102,7 +96,7 @@ func (r *mysqlRepository) GetMessageAction(ctx context.Context, messageID int64,
 }
 
 func (r *mysqlRepository) GetCustomerByWAID(ctx context.Context, clientID int64, waid string) (result model.Customer, err error) {
-	q := `SELECT id, client_id, wa_id, email, full_name, address, birth_date, identity_number, identity_type, gender, status, created_at, updated_at FROM customers WHERE client_id = ? and wa_id = ?`
+	q := `SELECT id, client_id, wa_id, email, full_name, address, birth_date, identity_number, identity_type, gender, access, created_at, updated_at FROM customers WHERE client_id = ? and wa_id = ?`
 	err = r.db.GetContext(ctx, &result, r.db.Rebind(q), clientID, waid)
 	return
 }
@@ -146,8 +140,8 @@ func (r *mysqlRepository) UpdateSession(ctx context.Context, session model.Sessi
 }
 
 func (r *mysqlRepository) InsertCustomer(ctx context.Context, customer model.Customer) (err error) {
-	q := `INSERT INTO customers (client_id,wa_id, status) VALUES (?,?,?)`
-	_, err = r.db.ExecContext(ctx, r.db.Rebind(q), customer.ClientID, customer.WAID, model.AccessPublic)
+	q := `INSERT INTO customers (client_id,wa_id, access) VALUES (?,?,?)`
+	_, err = r.db.ExecContext(ctx, r.db.Rebind(q), customer.ClientID, customer.WAID, model.AccessNew)
 	return
 }
 
@@ -180,8 +174,8 @@ func (r *mysqlRepository) UpdateCustomer(ctx context.Context, customer model.Cus
 	if customer.Gender.Valid {
 		builder = builder.Set("gender", customer.Gender.V)
 	}
-	if customer.Status.Valid {
-		builder = builder.Set("status", customer.Status.V.Int())
+	if customer.Access.Valid {
+		builder = builder.Set("status", customer.Access.V.Int())
 	}
 	builder = builder.Where(sq.Eq{
 		"client_id": customer.ClientID,
@@ -190,6 +184,76 @@ func (r *mysqlRepository) UpdateCustomer(ctx context.Context, customer model.Cus
 
 	q, args, err := builder.ToSql()
 	fmt.Println("update customer", q, args, err)
+
+	if err != nil {
+		return
+	}
+
+	_, err = r.db.ExecContext(ctx, q, args...)
+	return
+}
+
+func (r *mysqlRepository) CreatePayment(ctx context.Context, data model.Payment) (lastID int64, err error) {
+	q := `insert into payments(id, customer_id, ref_id, payment_provider, payment_ref_id, payment_type, payment_code,payment_item, status, amount, fee)
+				values (:id,  :customer_id, :ref_id, :payment_provider, :payment_ref_id,:payment_type, :payment_code, :payment_item, :status, :amount, :fee)`
+
+	result, err := r.db.NamedExecContext(ctx, q, data)
+	if err != nil {
+		return 0, err
+	}
+	lastID, err = result.LastInsertId()
+	return
+}
+
+func (r *mysqlRepository) GetPaymentCustomer(ctx context.Context, id string) (result model.PaymentCustomer, err error) {
+	q := `select c.wa_id,customer_id,t.id,c.client_id
+			from payments t inner join customers c on t.customer_id = c.id
+			where t.id = ?`
+
+	r.db.GetContext(ctx, &result, r.db.Rebind(q), id)
+	return
+}
+
+func (r *mysqlRepository) UpdatePayment(ctx context.Context, data model.Payment) (err error) {
+	builder := sq.Update("payments")
+	if data.Status.Valid {
+		builder = builder.Set("status", data.Status.V)
+	}
+	if data.RefID.Valid {
+		builder = builder.Set("ref_id", data.RefID.V)
+	}
+	if data.PaymentProvider.Valid {
+		builder = builder.Set("payment_provider", data.PaymentProvider.V)
+	}
+	if data.PaymentRefID.Valid {
+		builder = builder.Set("payment_ref_id", data.PaymentRefID.V)
+	}
+	if data.PaymentType.Valid {
+		builder = builder.Set("payment_type", data.PaymentType.V)
+	}
+	if data.PaymentCode.Valid {
+		builder = builder.Set("payment_code", data.PaymentCode.V)
+	}
+	if data.PaymentItem.Valid {
+		builder = builder.Set("payment_item", data.PaymentItem.V)
+	}
+	if data.Amount.Valid {
+		builder = builder.Set("amount", data.Amount.Decimal)
+	}
+	if data.Fee.Valid {
+		builder = builder.Set("fee", data.Fee.Decimal)
+	}
+
+	if data.ExpiredAt.Valid {
+		builder = builder.Set("expired_at", data.ExpiredAt)
+	}
+
+	builder = builder.Where(sq.Eq{
+		"id": data.ID,
+	})
+
+	q, args, err := builder.ToSql()
+	fmt.Println("update payments", q, args, err)
 
 	if err != nil {
 		return

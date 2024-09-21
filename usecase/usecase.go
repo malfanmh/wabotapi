@@ -6,7 +6,6 @@ import (
 )
 
 type Repository interface {
-	GetClientByHash(ctx context.Context, hash string) (result model.Client, err error)
 	GetClientByWAPhoneID(ctx context.Context, waPhoneID string) (result model.Client, err error)
 	GetMessage(ctx context.Context, clientID, messageID int64) (msg model.Message, err error)
 	GetMessageFlow(ctx context.Context, clientID int64, access model.Access, keyword string, seq string, limit int) (result []model.MessageFlow, err error)
@@ -20,6 +19,10 @@ type Repository interface {
 
 	GetSession(ctx context.Context, clientID int64, waid, keyword string) (result model.Session, err error)
 	UpdateSession(ctx context.Context, session model.Session) (err error)
+
+	GetPaymentCustomer(ctx context.Context, refID string) (result model.PaymentCustomer, err error)
+	CreatePayment(ctx context.Context, data model.Payment) (lastID int64, err error)
+	UpdatePayment(ctx context.Context, data model.Payment) (err error)
 }
 
 type WhatsAppRepository interface {
@@ -28,14 +31,22 @@ type WhatsAppRepository interface {
 	SendText(ctx context.Context, from, to string, text string, params map[string]interface{}) (string, error)
 }
 
-type useCase struct {
-	repo Repository
-	wa   WhatsAppRepository
+type Payment interface {
+	GetPaymentLink(ctx context.Context, payload model.PaymentLink) (result model.PaymentLinkResponse, err error)
 }
 
-func New(repository Repository, wa WhatsAppRepository) *useCase {
+type useCase struct {
+	repo    Repository
+	wa      WhatsAppRepository
+	payment Payment
+	secret  string
+}
+
+func New(repository Repository, wa WhatsAppRepository, payment Payment, secret string) *useCase {
 	return &useCase{
-		repo: repository,
-		wa:   wa,
+		repo:    repository,
+		wa:      wa,
+		payment: payment,
+		secret:  secret,
 	}
 }

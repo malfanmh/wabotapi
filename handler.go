@@ -2,16 +2,17 @@ package wabotapi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"github.com/labstack/echo/v4"
+	"github.com/malfanmh/wabotapi/model"
 	"io"
 	"net/http"
 )
 
 type UseCase interface {
-	VerifyWebhook(ctx context.Context, hash, token string) (bool, error)
-	Webhook(ctx context.Context, hash string, payload []byte) error
+	VerifyWebhook(ctx context.Context, token string) (bool, error)
+	Webhook(ctx context.Context, payload []byte) error
 }
 
 type handler struct {
@@ -29,8 +30,7 @@ func (h *handler) VerifyWebhook(c echo.Context) error {
 	token := c.QueryParam("hub.verify_token")
 	challenge := c.QueryParam("hub.challenge")
 	if mode == "subscribe" {
-		hash := c.Param("clientHash")
-		ok, err := h.uc.VerifyWebhook(c.Request().Context(), hash, token)
+		ok, err := h.uc.VerifyWebhook(c.Request().Context(), token)
 		if err != nil {
 			fmt.Println(err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
@@ -57,7 +57,7 @@ func (h *handler) Webhook(c echo.Context) error {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
 	fmt.Println("payload", string(payload))
-	if err = h.uc.Webhook(c.Request().Context(), c.Param("clientHash"), payload); err != nil {
+	if err = h.uc.Webhook(c.Request().Context(), payload); err != nil {
 		fmt.Println("webhook error", err)
 		return c.String(http.StatusBadRequest, err.Error())
 	}
@@ -65,19 +65,14 @@ func (h *handler) Webhook(c echo.Context) error {
 	return c.JSON(http.StatusOK, nil)
 }
 
-func sendMessage(client *resty.Client, msg string) (string, error) {
-	//msgTemplate1 := `{"messaging_product":"whatsapp","to":"6281286312989","type":"template","template":{"name":"qna_template_test_1","language":{"code":"en"}}}`
-	//msgHello := `{ "messaging_product": "whatsapp", "to": "6281286312989", "type": "template", "template": { "name": "hello_world", "language": { "code": "en_US" } } }`
-	resp, err := client.R().
-		SetHeaders(map[string]string{
-			"Content-Type": "application/json",
-		}).
-		SetBody(msg).
-		Post("385924484596973/messages")
+func (h *handler) FinpayCallback(c echo.Context) error {
+	//Merchant ID : FIES994
+	//Merchant Key : WqSG4ViP0v6jQA9Zp3b8ofr2LkdIYmBx
+	var payload model.FinpayCallback
+	err := json.NewDecoder(c.Request().Body).Decode(&payload)
 	if err != nil {
-		return "", err
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
-	b := resp.Body()
-	fmt.Println(string(b), resp.StatusCode())
-	return string(b), nil
+
+	return c.JSON(http.StatusOK, nil)
 }

@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func (uc *useCase) validationFlow(ctx context.Context, client model.Client, session model.Session, input string, customer model.Customer, flow model.MessageFlow) (ses model.Session) {
+func (uc *useCase) validateRegistrationFlow(ctx context.Context, client model.Client, session model.Session, input string, customer model.Customer, flow model.MessageFlow) (ses model.Session) {
 	// PENDAFTARAN
 	isInputRevalidation := len(strings.Split(session.Slug, ":")) == 3
 	if isInputRevalidation {
@@ -139,7 +139,7 @@ func (uc *useCase) validationFlow(ctx context.Context, client model.Client, sess
 					}
 				}
 
-			case "KTP":
+			case "Ktp":
 				if flow.IsReValidate {
 					msg, _ := uc.repo.GetMessage(ctx, client.ID, flow.MessageID)
 					_, _ = uc.wa.SendText(ctx, client.WAPhoneID, customer.WAID, msg.BodyText, nil)
@@ -196,6 +196,32 @@ func (uc *useCase) validationFlow(ctx context.Context, client model.Client, sess
 			}
 
 		}
+	}
+	return
+}
+
+func (uc *useCase) validateActivationFlow(ctx context.Context, client model.Client, session model.Session, input string, customer model.Customer, flow model.MessageFlow) (ses model.Session) {
+	if !model.IsAlphanumeric(input) {
+		result, err := uc.wa.SendText(ctx, client.WAPhoneID, customer.WAID, fmt.Sprintf("Nomor KTA (%s) yang anda masukan salah \nmasukan nomor KTA yang benar.", input), nil)
+		fmt.Println(result, err)
+		ses = session
+		return
+	}
+	customer.Status = sql.Null[model.Access]{
+		V:     model.AccessActivated,
+		Valid: true,
+	}
+	if err := uc.repo.UpdateCustomer(ctx, customer); err != nil {
+		fmt.Println("UpdateCustomer err:", err)
+	}
+	session.Access = model.AccessActivated
+	flow, err := uc.repo.GetMessageFlowBySlug(ctx, client.ID, "menu-aktivasi-done")
+	if err != nil {
+		fmt.Println("get next flow err:", err)
+	}
+	ses, err = uc.regularFlow(ctx, client, flow, session, customer)
+	if err != nil {
+		fmt.Println("regularFlow err:", err)
 	}
 	return
 }
