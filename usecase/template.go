@@ -7,10 +7,6 @@ import (
 	"text/template"
 )
 
-type MessageMetadata struct {
-	Name string `json:"name"`
-}
-
 func (uc *useCase) renderTemplate(msg string, args any) (result string, err error) {
 	var data map[string]interface{}
 	if err = json.Unmarshal([]byte(msg), &data); err != nil {

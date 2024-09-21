@@ -8,6 +8,7 @@ import (
 type Repository interface {
 	GetClientByWAPhoneID(ctx context.Context, waPhoneID string) (result model.Client, err error)
 	GetMessage(ctx context.Context, clientID, messageID int64) (msg model.Message, err error)
+	GetMessageBySlug(ctx context.Context, clientID int64, slug string) (msg model.Message, err error)
 	GetMessageFlow(ctx context.Context, clientID int64, access model.Access, keyword string, seq string, limit int) (result []model.MessageFlow, err error)
 	GetMessageFlowBySlug(ctx context.Context, clientID int64, slug string) (flow model.MessageFlow, err error)
 	GetNextFlow(ctx context.Context, clientID int64, access model.Access, keyword string, seq string) (result model.MessageFlow, err error)
@@ -23,6 +24,8 @@ type Repository interface {
 	GetPaymentCustomer(ctx context.Context, refID string) (result model.PaymentCustomer, err error)
 	CreatePayment(ctx context.Context, data model.Payment) (lastID int64, err error)
 	UpdatePayment(ctx context.Context, data model.Payment) (err error)
+
+	GetProductBySlug(ctx context.Context, clientID int64, slug string) (result model.Product, err error)
 }
 
 type WhatsAppRepository interface {

@@ -4,8 +4,32 @@ import (
 	"context"
 	"fmt"
 	"github.com/malfanmh/wabotapi/model"
+	"github.com/pkg/errors"
 	"strings"
 )
+
+func (uc *useCase) sendMessageBySlug(ctx context.Context, clientID int64, WAPhoneID, WAID, slug string, access model.Access, param any) error {
+	msg, err := uc.repo.GetMessageBySlug(ctx, clientID, slug)
+	if err != nil {
+		return err
+	}
+	jsonMessage, errM := uc.generateMessageBody(ctx, clientID, msg.ID, access)
+	if errM != nil {
+		return errM
+	}
+	fmt.Println(jsonMessage)
+	jsonMessage, errT := uc.renderTemplate(jsonMessage, param)
+	if errT != nil {
+		fmt.Println("renderTemplate err:", errT)
+	}
+
+	result, errS := uc.wa.Send(ctx, WAPhoneID, WAID, msg.Type.ToWaType(), jsonMessage)
+	if errS != nil {
+		err = errors.WithStack(errS)
+	}
+	fmt.Println(result)
+	return nil
+}
 
 func (uc *useCase) generateMessageBody(ctx context.Context, clientID, messageID int64, access model.Access) (jsonMessage string, err error) {
 	message, err := uc.repo.GetMessage(ctx, clientID, messageID)
@@ -25,7 +49,7 @@ func (uc *useCase) generateMessageBody(ctx context.Context, clientID, messageID 
 			jsonMessage += fmt.Sprintf(`"body":{"text":"%s"},`, message.BodyText)
 		}
 		if message.FooterText != "" {
-			jsonMessage += fmt.Sprintf(`"footer":{"text":"%s"}`, message.FooterText)
+			jsonMessage += fmt.Sprintf(`"footer":{"text":"%s"},`, message.FooterText)
 		}
 
 		actions, errA := uc.repo.GetMessageAction(ctx, messageID, access)
@@ -53,7 +77,7 @@ func (uc *useCase) generateMessageBody(ctx context.Context, clientID, messageID 
 			jsonMessage += fmt.Sprintf(`"body":{"text":"%s"},`, message.BodyText)
 		}
 		if message.FooterText != "" {
-			jsonMessage += fmt.Sprintf(`"footer":{"text":"%s"}`, message.FooterText)
+			jsonMessage += fmt.Sprintf(`"footer":{"text":"%s"},`, message.FooterText)
 		}
 
 		actions, errA := uc.repo.GetMessageAction(ctx, messageID, access)
@@ -84,7 +108,7 @@ func (uc *useCase) generateMessageBody(ctx context.Context, clientID, messageID 
 			jsonMessage += fmt.Sprintf(`"body":{"text":"%s"},`, message.BodyText)
 		}
 		if message.FooterText != "" {
-			jsonMessage += fmt.Sprintf(`"footer":{"text":"%s"}`, message.FooterText)
+			jsonMessage += fmt.Sprintf(`"footer":{"text":"%s"},`, message.FooterText)
 		}
 
 		actions, errA := uc.repo.GetMessageAction(ctx, messageID, access)

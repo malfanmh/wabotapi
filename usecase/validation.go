@@ -207,7 +207,7 @@ func (uc *useCase) validateActivationFlow(ctx context.Context, client model.Clie
 		ses = session
 		return
 	}
-	customer.Status = sql.Null[model.Access]{
+	customer.Access = sql.Null[model.Access]{
 		V:     model.AccessActivated,
 		Valid: true,
 	}

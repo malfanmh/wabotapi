@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/malfanmh/wabotapi/model"
 	"github.com/shopspring/decimal"
+	"log"
 	"math/rand"
 )
 
@@ -15,25 +16,32 @@ func (uc *useCase) checkout(ctx context.Context, client model.Client, session mo
 	}
 	// TODO get items
 	amount := decimal.NewFromInt(randomNumber(15000, 50000))
-	switch input {
-	case "zis":
-		amount = decimal.NewFromInt(randomNumber(50000, 100000))
-	case "iuran":
-		amount = decimal.NewFromInt(randomNumber(100000, 200000))
+	product, err := uc.repo.GetProductBySlug(ctx, client.ID, input)
+	if err != nil {
+		log.Println(err)
 	}
+	amount = product.Price
 
 	orderID, err := uc.repo.CreatePayment(ctx, model.Payment{
 		CustomerID: customer.ID,
+		RefID: sql.Null[string]{
+			V:     "",
+			Valid: true,
+		},
+		PaymentProvider: sql.Null[string]{
+			V:     "",
+			Valid: true,
+		},
 		PaymentItem: sql.Null[string]{
-			V:     input,
+			V:     product.Slug,
 			Valid: input != "",
 		},
-		Access: sql.Null[string]{
+		Status: sql.Null[string]{
 			V:     "PENDING",
 			Valid: true,
 		},
 		Amount: decimal.NewNullDecimal(amount),
-		Fee:    decimal.NullDecimal{},
+		Fee:    decimal.NewNullDecimal(decimal.NewFromInt(0)),
 	})
 	if err != nil {
 		fmt.Println("CreatePayment err:", err)
@@ -69,6 +77,9 @@ func (uc *useCase) checkout(ctx context.Context, client model.Client, session mo
 
 	fmt.Println(paymentLink.Redirecturl, err)
 	ses, err = uc.regularFlow(ctx, client, flow, session, model.MessageMetadata{
+		ID:          fmt.Sprint(customer.ID),
+		Name:        customer.FullName.V,
+		ProductName: product.Name,
 		CheckoutURL: paymentLink.Redirecturl,
 		Amount:      model.FormatRP(amount.Truncate(2).InexactFloat64()),
 		ExpiryDate:  model.FormatExpiryDate(paymentLink.ExpiryLink),
@@ -82,6 +93,7 @@ func (uc *useCase) checkout(ctx context.Context, client model.Client, session mo
 func (uc *useCase) PaymentCallback(ctx context.Context, callback model.FinpayCallback) error {
 	ct, err := uc.repo.GetPaymentCustomer(ctx, callback.Order.ID)
 	if err != nil {
+		fmt.Println("GetPaymentCustomer not found, err:", err)
 		return err
 	}
 	var toNullString = func(s string) sql.Null[string] {
@@ -92,19 +104,30 @@ func (uc *useCase) PaymentCallback(ctx context.Context, callback model.FinpayCal
 	}
 	switch callback.Result.Payment.Status {
 	case "PAID":
+		err = uc.sendMessageBySlug(ctx, ct.ClientID, ct.WAPhoneID, ct.WAID, "checkout-payment-success", model.AccessActivated,
+			model.MessageMetadata{
+				Invoice: fmt.Sprintf("INV%d", ct.ID),
+				ID:      fmt.Sprint(ct.CustomerID),
+				Name:    ct.FullName,
+			})
+		fmt.Println("sendMessageBySlug", err)
 	case "CANCELLED", "FAILURE":
-
+		// TODO send message , checkout-payment-failed
+		err = uc.sendMessageBySlug(ctx, ct.ClientID, ct.WAPhoneID, ct.WAID, "checkout-payment-failed", model.AccessActivated, nil)
+		return nil
+	default:
+		fmt.Println("Unhandled Payment status:", callback.Result.Payment.Status)
 	}
 	amount := decimal.NewFromFloat(callback.Result.Payment.Amount)
 	data := model.Payment{
 		ID:              ct.ID,
 		RefID:           toNullString(callback.Order.Reference),
-		CustomerID:      0,
+		CustomerID:      ct.CustomerID,
 		PaymentType:     toNullString(callback.SourceOfFunds.Type),
 		PaymentProvider: toNullString("finpay"),
 		PaymentCode:     toNullString(callback.SourceOfFunds.PaymentCode),
 		PaymentRefID:    toNullString(callback.Result.Payment.Reference),
-		Access:          toNullString(callback.Result.Payment.Status),
+		Status:          toNullString(callback.Result.Payment.Status),
 		Amount:          decimal.NewNullDecimal(amount),
 		Fee:             decimal.NewNullDecimal(decimal.Zero),
 	}

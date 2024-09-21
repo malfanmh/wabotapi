@@ -13,6 +13,7 @@ import (
 type UseCase interface {
 	VerifyWebhook(ctx context.Context, token string) (bool, error)
 	Webhook(ctx context.Context, payload []byte) error
+	PaymentCallback(ctx context.Context, callback model.FinpayCallback) error
 }
 
 type handler struct {
@@ -72,6 +73,11 @@ func (h *handler) FinpayCallback(c echo.Context) error {
 	err := json.NewDecoder(c.Request().Body).Decode(&payload)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	fmt.Println("FinpayCallback payload", payload)
+	err = h.uc.PaymentCallback(c.Request().Context(), payload)
+	if err != nil {
+		return c.String(http.StatusBadRequest, err.Error())
 	}
 
 	return c.JSON(http.StatusOK, nil)

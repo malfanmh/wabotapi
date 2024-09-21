@@ -11,7 +11,7 @@ func FormatExpiryDate(inputTime string) string {
 	layout := "2006-01-02 15:04:05"
 	t, err := time.Parse(layout, inputTime)
 	if err != nil {
-		fmt.Println("Error parsing time:", err)
+		fmt.Println("Error parsing time:", inputTime, err)
 		t = time.Now().Add(24 * time.Hour)
 	}
 

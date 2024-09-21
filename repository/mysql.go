@@ -84,6 +84,15 @@ func (r *mysqlRepository) GetMessage(ctx context.Context, clientID, messageID in
 	return
 }
 
+func (r *mysqlRepository) GetMessageBySlug(ctx context.Context, clientID int64, slug string) (msg model.Message, err error) {
+	q := `select id, slug, type, button, header_text, preview_url, body_text, footer_text, with_metadata
+			from messages
+			where client_id = ?
+			and slug = ?`
+	err = r.db.GetContext(ctx, &msg, r.db.Rebind(q), clientID, slug)
+	return
+}
+
 func (r *mysqlRepository) GetMessageAction(ctx context.Context, messageID int64, access model.Access) (result []model.MessageAction, err error) {
 	q := `select slug,title,description
 			from message_actions
@@ -206,8 +215,10 @@ func (r *mysqlRepository) CreatePayment(ctx context.Context, data model.Payment)
 }
 
 func (r *mysqlRepository) GetPaymentCustomer(ctx context.Context, id string) (result model.PaymentCustomer, err error) {
-	q := `select c.wa_id,customer_id,t.id,c.client_id
-			from payments t inner join customers c on t.customer_id = c.id
+	q := `select c.wa_id,cl.wa_phone_id, customer_id,t.id,c.client_id,c.full_name
+			from payments t 
+			    inner join customers c on t.customer_id = c.id
+			    inner join clients cl on c.client_id = cl.id
 			where t.id = ?`
 
 	r.db.GetContext(ctx, &result, r.db.Rebind(q), id)
@@ -260,5 +271,11 @@ func (r *mysqlRepository) UpdatePayment(ctx context.Context, data model.Payment)
 	}
 
 	_, err = r.db.ExecContext(ctx, q, args...)
+	return
+}
+
+func (r *mysqlRepository) GetProductBySlug(ctx context.Context, clientID int64, slug string) (result model.Product, err error) {
+	q := `select id, name,slug, description, price, stock from products where slug = ?`
+	err = r.db.GetContext(ctx, &result, r.db.Rebind(q), slug)
 	return
 }

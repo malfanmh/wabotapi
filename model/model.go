@@ -65,6 +65,7 @@ type MessageFlow struct {
 }
 
 type Message struct {
+	ID           int64           `db:"id"`
 	Slug         string          `db:"slug"`
 	HeaderText   string          `db:"header_text"`
 	PreviewURL   bool            `db:"preview_url"`
@@ -127,8 +128,10 @@ type Payment struct {
 type PaymentCustomer struct {
 	ID         int64  `db:"id"`
 	ClientID   int64  `db:"client_id"`
+	WAPhoneID  string `db:"wa_phone_id"`
 	WAID       string `db:"wa_id"`
 	CustomerID int64  `db:"customer_id"`
+	FullName   string `db:"full_name"`
 }
 
 type Session struct {
@@ -144,10 +147,22 @@ type Session struct {
 }
 
 type MessageMetadata struct {
+	ID          string `json:"id"`
 	Name        string `json:"name"`
+	Invoice     string `json:"invoice"`
+	ProductName string `json:"product_name"`
 	CheckoutURL string `json:"checkout_url"`
 	Amount      string `json:"amount"`
 	ExpiryDate  string `json:"expiry_date"`
+}
+
+type Product struct {
+	ID          int64           `db:"id"`
+	Name        string          `db:"name"`
+	Slug        string          `db:"slug"`
+	Description sql.NullString  `db:"description"`
+	Price       decimal.Decimal `db:"price"`
+	Stock       decimal.Decimal `db:"stock"`
 }
 
 type (
