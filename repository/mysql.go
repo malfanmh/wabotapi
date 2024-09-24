@@ -279,3 +279,9 @@ func (r *mysqlRepository) GetProductBySlug(ctx context.Context, clientID int64, 
 	err = r.db.GetContext(ctx, &result, r.db.Rebind(q), slug)
 	return
 }
+
+func (r *mysqlRepository) GetExpiredPayment(ctx context.Context) (result []model.Payment, err error) {
+	q := `select id,status from payments where expired_at < now() and status = 'PENDING';`
+	err = r.db.SelectContext(ctx, &result, q)
+	return
+}

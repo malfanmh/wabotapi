@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/malfanmh/wabotapi/model"
+	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"log"
 	"math/rand"
@@ -133,6 +134,29 @@ func (uc *useCase) PaymentCallback(ctx context.Context, callback model.FinpayCal
 	}
 
 	if err = uc.repo.UpdatePayment(ctx, data); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (uc *useCase) ExpiryLink(ctx context.Context) error {
+	payments, err := uc.repo.GetExpiredPayment(ctx)
+	if err != nil {
+		return err
+	}
+	for _, payment := range payments {
+		errU := uc.repo.UpdatePayment(ctx, model.Payment{
+			ID: payment.ID,
+			Status: sql.Null[string]{
+				V:     "EXPIRED",
+				Valid: true,
+			},
+		})
+		if errU != nil {
+			err = errors.WithStack(errU)
+		}
+	}
+	if err != nil {
 		return err
 	}
 	return nil

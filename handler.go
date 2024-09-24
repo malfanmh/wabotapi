@@ -14,6 +14,7 @@ type UseCase interface {
 	VerifyWebhook(ctx context.Context, token string) (bool, error)
 	Webhook(ctx context.Context, payload []byte) error
 	PaymentCallback(ctx context.Context, callback model.FinpayCallback) error
+	ExpiryLink(ctx context.Context) error
 }
 
 type handler struct {
@@ -81,4 +82,8 @@ func (h *handler) FinpayCallback(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, nil)
+}
+
+func (h *handler) ExpiryLink(ctx context.Context) error {
+	return h.uc.ExpiryLink(ctx)
 }

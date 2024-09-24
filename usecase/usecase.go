@@ -24,6 +24,7 @@ type Repository interface {
 	GetPaymentCustomer(ctx context.Context, refID string) (result model.PaymentCustomer, err error)
 	CreatePayment(ctx context.Context, data model.Payment) (lastID int64, err error)
 	UpdatePayment(ctx context.Context, data model.Payment) (err error)
+	GetExpiredPayment(ctx context.Context) (result []model.Payment, err error)
 
 	GetProductBySlug(ctx context.Context, clientID int64, slug string) (result model.Product, err error)
 }
