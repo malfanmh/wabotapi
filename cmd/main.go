@@ -26,7 +26,7 @@ func main() {
 	repo := repository.NewMysql(db)
 	wa := repository.NewWhatsappAPI(env.WABaseURL, env.WABusinessAccountID, env.WAAccessToken, &http.Client{})
 	httpClient := &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
-	payment := repository.NewFinpay(httpClient, env.FinpayBaseURL, env.FinpayCallbackURL, env.FinpayMerchantID, env.FinpaySecret)
+	payment := repository.NewFinpay(httpClient, env.FinpayBaseURL)
 	uc := usecase.New(repo, wa, payment, env.WASecret)
 	handler := wabotapi.NewHandler(uc)
 

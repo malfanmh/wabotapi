@@ -19,10 +19,7 @@ type Config struct {
 	WABusinessAccountID string `envconfig:"WA_BUSINESS_ACCOUNT_ID"`
 	WABaseURL           string `envconfig:"WA_BASE_URL"`
 	WASecret            string `envconfig:"WA_SECRET"`
-	FinpayMerchantID    string `envconfig:"FINPAY_MERCHANT_ID" default:""`
-	FinpaySecret        string `envconfig:"FINPAY_SECRET" default:""`
-	FinpayBaseURL       string `envconfig:"FINPAY_BASE_URL" default:""`
-	FinpayCallbackURL   string `envconfig:"FINPAY_CALLBACK_URL" default:""`
+	FinpayBaseURL       string `envconfig:"FINPAY_BASE_URL" default:"https://devo.finnet.co.id"`
 }
 
 func init() {
