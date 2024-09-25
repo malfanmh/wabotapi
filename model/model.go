@@ -114,6 +114,7 @@ type Payment struct {
 	UpdatedAt       string              `db:"updated_at"`
 	ExpiredAt       sql.Null[string]    `db:"expired_at"`
 	RefID           sql.Null[string]    `db:"ref_id"`
+	ClientID        int64               `db:"client_id"`
 	CustomerID      int64               `db:"customer_id"`
 	PaymentType     sql.Null[string]    `db:"payment_type"`
 	PaymentProvider sql.Null[string]    `db:"payment_provider"`

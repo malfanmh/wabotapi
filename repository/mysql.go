@@ -203,8 +203,8 @@ func (r *mysqlRepository) UpdateCustomer(ctx context.Context, customer model.Cus
 }
 
 func (r *mysqlRepository) CreatePayment(ctx context.Context, data model.Payment) (lastID int64, err error) {
-	q := `insert into payments(id, customer_id, ref_id, payment_provider, payment_ref_id, payment_type, payment_code,payment_item, status, amount, fee)
-				values (:id,  :customer_id, :ref_id, :payment_provider, :payment_ref_id,:payment_type, :payment_code, :payment_item, :status, :amount, :fee)`
+	q := `insert into payments(id,client_id, customer_id, ref_id, payment_provider, payment_ref_id, payment_type, payment_code,payment_item, status, amount, fee)
+				values (:id, :client_id, :customer_id, :ref_id, :payment_provider, :payment_ref_id,:payment_type, :payment_code, :payment_item, :status, :amount, :fee)`
 
 	result, err := r.db.NamedExecContext(ctx, q, data)
 	if err != nil {

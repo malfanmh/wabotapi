@@ -25,6 +25,7 @@ func (uc *useCase) checkout(ctx context.Context, client model.Client, session mo
 
 	orderID, err := uc.repo.CreatePayment(ctx, model.Payment{
 		CustomerID: customer.ID,
+		ClientID:   client.ID,
 		RefID: sql.Null[string]{
 			V:     "",
 			Valid: true,
