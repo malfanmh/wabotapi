@@ -1,0 +1,9 @@
+drop table clients;
+drop table customers;
+drop table messages;
+drop table message_actions;
+drop table message_flows;
+drop table messages;
+drop table payments;
+drop table products;
+drop table sessoin;
