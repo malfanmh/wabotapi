@@ -20,7 +20,7 @@ func NewMysql(db *sqlx.DB) *mysqlRepository {
 }
 
 func (r *mysqlRepository) GetClientByWAPhoneID(ctx context.Context, waPhoneID string) (result model.Client, err error) {
-	q := `SELECT id, name, hash, token, wa_phone, wa_phone_id FROM clients WHERE wa_phone_id = ?`
+	q := `SELECT id, name, finpay_merchant_id, finpay_secret, finpay_callback_url, wa_phone, wa_phone_id FROM clients WHERE wa_phone_id = ?`
 	err = r.db.GetContext(ctx, &result, r.db.Rebind(q), waPhoneID)
 	return
 }

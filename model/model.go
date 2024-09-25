@@ -22,13 +22,13 @@ func (a Access) Int() int {
 }
 
 type Client struct {
-	ID         int64  `db:"id"`
-	MerchantID int64  `db:"merchant_id"`
-	Name       string `db:"name"`
-	Hash       string `db:"hash"`
-	Token      string `db:"token"`
-	WAPhone    string `db:"wa_phone"`
-	WAPhoneID  string `db:"wa_phone_id"`
+	ID                int64  `db:"id"`
+	Name              string `db:"name"`
+	FinpayMerchantID  string `db:"finpay_merchant_id"`
+	FinpaySecret      string `db:"finpay_secret"`
+	FinpayCallbackURL string `db:"finpay_callback_url"`
+	WAPhone           string `db:"wa_phone"`
+	WAPhoneID         string `db:"wa_phone_id"`
 }
 
 type MessageFlowType string

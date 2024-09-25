@@ -36,7 +36,7 @@ type WhatsAppRepository interface {
 }
 
 type Payment interface {
-	GetPaymentLink(ctx context.Context, payload model.PaymentLink) (result model.PaymentLinkResponse, err error)
+	GetPaymentLink(ctx context.Context, client model.Client, payload model.PaymentLink) (result model.PaymentLinkResponse, err error)
 }
 
 type useCase struct {

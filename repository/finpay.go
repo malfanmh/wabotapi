@@ -11,17 +11,17 @@ import (
 )
 
 type Finpay struct {
-	client                                   *http.Client
-	baseURL, callbackURL, merchantID, secret string
+	client  *http.Client
+	baseURL string
 }
 
-func NewFinpay(client *http.Client, baseURL, callbackURL, merchantID, secret string) *Finpay {
-	return &Finpay{client, baseURL, callbackURL, merchantID, secret}
+func NewFinpay(client *http.Client, baseURL string) *Finpay {
+	return &Finpay{client, baseURL}
 }
 
-func (f *Finpay) GetPaymentLink(ctx context.Context, payload model.PaymentLink) (result model.PaymentLinkResponse, err error) {
+func (f *Finpay) GetPaymentLink(ctx context.Context, client model.Client, payload model.PaymentLink) (result model.PaymentLinkResponse, err error) {
 	url := fmt.Sprintf("%s/pg/payment/card/initiate", f.baseURL)
-	payload.URL.CallbackURL = f.callbackURL
+	payload.URL.CallbackURL = client.FinpayCallbackURL
 	b, err := json.Marshal(payload)
 	if err != nil {
 		err = fmt.Errorf("error marshalling payload: %w", err)
@@ -33,7 +33,7 @@ func (f *Finpay) GetPaymentLink(ctx context.Context, payload model.PaymentLink) 
 		err = fmt.Errorf("error creating request: %w", err)
 		return
 	}
-	req.SetBasicAuth(f.merchantID, f.secret)
+	req.SetBasicAuth(client.FinpayMerchantID, client.FinpaySecret)
 	req.Header.Set("Content-Type", "application/json")
 
 	response, err := f.client.Do(req)

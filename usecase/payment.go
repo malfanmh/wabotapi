@@ -49,7 +49,7 @@ func (uc *useCase) checkout(ctx context.Context, client model.Client, session mo
 		return session
 	}
 
-	paymentLink, err := uc.payment.GetPaymentLink(ctx, model.PaymentLink{
+	paymentLink, err := uc.payment.GetPaymentLink(ctx, client, model.PaymentLink{
 		Customer: model.PaymentLinkCustomer{
 			Email:       customer.Email.V,
 			FirstName:   customer.FullName.V,
