@@ -4,19 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/go-co-op/gocron"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
 	"github.com/malfanmh/wabotapi"
 	"github.com/malfanmh/wabotapi/pkg/customecho"
 	"github.com/malfanmh/wabotapi/repository"
 	"github.com/malfanmh/wabotapi/usecase"
+	"github.com/robfig/cron/v3"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 func main() {
@@ -47,25 +46,28 @@ func main() {
 		}
 	}()
 
-	jakarta, _ := time.LoadLocation("Asia/Jakarta")
-	s := gocron.NewScheduler(jakarta)
-	log.Printf("starting ExpiryLink scheduler every minutes \n")
-	s.Every(time.Minute).Do(func() {
+	c := cron.New()
+	fmt.Println("adding cron job")
+	_, err := c.AddFunc("* * * * *", func() {
 		if err := handler.ExpiryLink(context.Background()); err != nil {
 			log.Printf("scheduler ExpiryLink err %v\n", err)
 		}
 	})
-	go func() {
-		s.StartBlocking()
-		cancelFunc()
-	}()
+	if err != nil {
+		log.Fatalf("failed to add cron job: %v\n", err)
+	}
+	c.Start()
 
 	<-ctx.Done()
 	if err := e.Shutdown(ctx); err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("shutting down http")
-	s.Stop()
+
+	c.Stop()
+	if err != nil {
+		fmt.Println(err)
+	}
 	log.Printf("shutting down cron")
 
 }
