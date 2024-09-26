@@ -17,17 +17,17 @@ func (uc *useCase) sendMessageBySlug(ctx context.Context, clientID int64, WAPhon
 	if errM != nil {
 		return errM
 	}
-	fmt.Println(jsonMessage)
+	//fmt.Println(jsonMessage)
 	jsonMessage, errT := uc.renderTemplate(jsonMessage, param)
 	if errT != nil {
 		fmt.Println("renderTemplate err:", errT)
 	}
 
-	result, errS := uc.wa.Send(ctx, WAPhoneID, WAID, msg.Type.ToWaType(), jsonMessage)
+	_, errS := uc.wa.Send(ctx, WAPhoneID, WAID, msg.Type.ToWaType(), jsonMessage)
 	if errS != nil {
 		err = errors.WithStack(errS)
 	}
-	fmt.Println(result)
+	//fmt.Println(result)
 	return nil
 }
 

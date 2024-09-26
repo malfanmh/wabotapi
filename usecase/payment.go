@@ -77,7 +77,7 @@ func (uc *useCase) checkout(ctx context.Context, client model.Client, session mo
 		fmt.Println("UpdatePayment err:", err)
 	}
 
-	fmt.Println(paymentLink.Redirecturl, err)
+	//fmt.Println(paymentLink.Redirecturl, err)
 	ses, err = uc.regularFlow(ctx, client, flow, session, model.MessageMetadata{
 		ID:          fmt.Sprint(customer.ID),
 		Name:        customer.FullName.V,

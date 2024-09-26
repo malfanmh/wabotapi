@@ -27,7 +27,7 @@ func (f *Finpay) GetPaymentLink(ctx context.Context, client model.Client, payloa
 		err = fmt.Errorf("error marshalling payload: %w", err)
 		return
 	}
-	fmt.Println("req URL :", url, string(b))
+	//fmt.Println("req URL :", url, string(b))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(b))
 	if err != nil {
 		err = fmt.Errorf("error creating request: %w", err)

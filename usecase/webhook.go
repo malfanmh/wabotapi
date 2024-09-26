@@ -35,7 +35,7 @@ func (uc *useCase) Webhook(ctx context.Context, payload []byte) error {
 		if messageValue.Get("messages").Exists() {
 			messages := messageValue.Get("messages").Array()
 			for _, message := range messages {
-				fmt.Println("message.String()", message.String())
+				//fmt.Println("message.String()", message.String())
 				var msg model.WAMessage
 				if err := msg.UnmarshalJSON([]byte(message.String())); err != nil {
 					fmt.Printf("unmarshal message err: %v\n", err)

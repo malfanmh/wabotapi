@@ -22,7 +22,7 @@ func (uc *useCase) validateRegistrationFlow(ctx context.Context, client model.Cl
 	if isInputRevalidation || flow.IsReValidate {
 		slug = flow.Slug
 	}
-	fmt.Println("isInputRevalidation", isInputRevalidation, flow.IsReValidate, session.Slug, slug)
+	//fmt.Println("isInputRevalidation", isInputRevalidation, flow.IsReValidate, session.Slug, slug)
 	keys := strings.Split(slug, ":")
 	if len(keys) == 2 {
 		if customer.WAID == "" {

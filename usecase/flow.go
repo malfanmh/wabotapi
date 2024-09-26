@@ -26,7 +26,7 @@ func (uc *useCase) flow(ctx context.Context, client model.Client, contact model.
 	if err != nil {
 		return err
 	}
-	fmt.Println("flow", flows, err)
+	//fmt.Println("flow", flows, err)
 	for _, flow := range flows {
 		md := model.MessageMetadata{
 			Name: func() string {
@@ -36,7 +36,7 @@ func (uc *useCase) flow(ctx context.Context, client model.Client, contact model.
 				return contact.Profile.Name.String()
 			}(),
 		}
-		fmt.Println("validate input", flow.ValidateInput, flow.IsInput)
+		//fmt.Println("validate input", flow.ValidateInput, flow.IsInput)
 		switch {
 		case flow.ValidateInput:
 			if flow.IsInput {
@@ -50,14 +50,14 @@ func (uc *useCase) flow(ctx context.Context, client model.Client, contact model.
 				// TODO optimize this flow
 				switch keyword {
 				case "menu-pendaftaran-preview-ya":
-					fmt.Println("menu-pendaftaran-preview-ya", model.AccessRegistered)
+					//fmt.Println("menu-pendaftaran-preview-ya", model.AccessRegistered)
 					_ = uc.repo.UpdateCustomer(ctx, model.Customer{WAID: contact.WaID, ClientID: client.ID, Access: sql.Null[model.Access]{
 						V:     model.AccessRegistered,
 						Valid: true,
 					}})
 					session.Access = model.AccessRegistered
 				case model.InputTextKTA:
-					fmt.Println(model.InputTextKTA, model.AccessActivated)
+					//fmt.Println(model.InputTextKTA, model.AccessActivated)
 					_ = uc.repo.UpdateCustomer(ctx, model.Customer{WAID: contact.WaID, ClientID: client.ID, Access: sql.Null[model.Access]{
 						V:     model.AccessActivated,
 						Valid: true,
@@ -73,10 +73,6 @@ func (uc *useCase) flow(ctx context.Context, client model.Client, contact model.
 		}
 	}
 
-	if err != nil {
-		fmt.Println("send err:", err)
-		return err
-	}
 	session.Input = payload
 	err = uc.repo.UpdateSession(ctx, session)
 	if err != nil {
@@ -108,19 +104,22 @@ func (uc *useCase) getFlow(ctx context.Context, session model.Session, input str
 		return nil, err
 	}
 	// is input text, check prev flow from session
-	fmt.Println("ln flow", len(flows), err)
+	//fmt.Println("ln flow", len(flows), err)
 
 	if len(flows) == 0 {
 		revalidate := false
 		if session.Slug == "menu-pendaftaran-re-validate" {
 			flow, err := uc.repo.GetMessageFlowBySlug(ctx, session.ClientID, input)
-			fmt.Println("GetMessageFlowBySlug", err)
+			if err != nil {
+				fmt.Println("GetMessageFlowBySlug", err)
+			}
+
 			session.Slug = flow.Slug
 			session.Seq = flow.Seq
 			revalidate = true
 		}
 
-		fmt.Println("session.Slug revalidate", session.Slug, revalidate)
+		//fmt.Println("session.Slug revalidate", session.Slug, revalidate)
 		keys := strings.Split(session.Slug, ":")
 		if len(keys) == 3 { // revalidation
 			flows, err = uc.repo.GetMessageFlow(ctx, session.ClientID, session.Access, keys[0], session.Seq, 1)
@@ -156,13 +155,13 @@ func (uc *useCase) regularFlow(ctx context.Context, client model.Client, flow mo
 	if errM != nil {
 		return session, errM
 	}
-	fmt.Println(jsonMessage)
+	//fmt.Println(jsonMessage)
 	jsonMessage, errT := uc.renderTemplate(jsonMessage, args)
 	if errT != nil {
 		fmt.Println("renderTemplate err:", errT)
 	}
 
-	result, errS := uc.wa.Send(ctx, client.WAPhoneID, session.WAID, flow.Type.ToWaType(), jsonMessage)
+	_, errS := uc.wa.Send(ctx, client.WAPhoneID, session.WAID, flow.Type.ToWaType(), jsonMessage)
 	if errS != nil {
 		err = errors.WithStack(errS)
 	}
@@ -172,6 +171,6 @@ func (uc *useCase) regularFlow(ctx context.Context, client model.Client, flow mo
 	} else {
 		session.Seq = "0"
 	}
-	fmt.Println(result)
+	//fmt.Println(result)
 	return session, nil
 }

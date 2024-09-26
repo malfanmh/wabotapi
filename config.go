@@ -35,7 +35,7 @@ func New() (conf *Config) {
 }
 
 func OpenMysqlDB(dsn string) *sqlx.DB {
-	fmt.Println(dsn)
+	//fmt.Println(dsn)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		panic(err)

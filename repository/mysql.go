@@ -43,8 +43,8 @@ func (r *mysqlRepository) GetMessageFlow(ctx context.Context, clientID int64, ac
 	if limit > 0 {
 		q += fmt.Sprintf(" limit %d", limit)
 	}
-	fmt.Println(q)
-	fmt.Println(args)
+	//fmt.Println(q)
+	//fmt.Println(args)
 	err = r.db.SelectContext(ctx, &result, r.db.Rebind(q), args...)
 	return
 }
@@ -192,7 +192,7 @@ func (r *mysqlRepository) UpdateCustomer(ctx context.Context, customer model.Cus
 	})
 
 	q, args, err := builder.ToSql()
-	fmt.Println("update customer", q, args, err)
+	//fmt.Println("update customer", q, args, err)
 
 	if err != nil {
 		return
@@ -264,7 +264,7 @@ func (r *mysqlRepository) UpdatePayment(ctx context.Context, data model.Payment)
 	})
 
 	q, args, err := builder.ToSql()
-	fmt.Println("update payments", q, args, err)
+	//fmt.Println("update payments", q, args, err)
 
 	if err != nil {
 		return

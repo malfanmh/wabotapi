@@ -58,7 +58,7 @@ func (h *handler) Webhook(c echo.Context) error {
 		fmt.Println("error reading body")
 		return c.String(http.StatusBadRequest, err.Error())
 	}
-	fmt.Println("payload", string(payload))
+	//fmt.Println("payload", string(payload))
 	if err = h.uc.Webhook(c.Request().Context(), payload); err != nil {
 		fmt.Println("webhook error", err)
 		return c.String(http.StatusBadRequest, err.Error())
@@ -75,7 +75,7 @@ func (h *handler) FinpayCallback(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
-	fmt.Println("FinpayCallback payload", payload)
+	//fmt.Println("FinpayCallback payload", payload)
 	err = h.uc.PaymentCallback(c.Request().Context(), payload)
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
